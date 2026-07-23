@@ -188,6 +188,43 @@ export function BaseKarmaApp() {
     }
   });
 
+  async function submitKarma(receiver: Address) {
+    if (chainId !== BASE_CHAIN_ID) {
+      await switchChainAsync({ chainId: base.id });
+    }
+    const call = buildAttributedSendKarmaCall(receiver, referrer);
+    try {
+      await sendCallsAsync({
+        calls: [call],
+        capabilities: {
+          dataSuffix: {
+            value: dataSuffix
+          }
+        },
+        chainId: base.id,
+        experimental_fallback: true
+      });
+    } catch {
+      await sendTransactionAsync({
+        to: CONTRACT_ADDRESS,
+        data: appendAttributionSuffix(call.data as Hex),
+        chainId: base.id
+      });
+    }
+  }
+
+  async function handleQuickLike() {
+    if (!isConnected) {
+      setNotice({ tone: "soft", text: "Choose a wallet to connect." });
+      return;
+    }
+    if (CONTRACT_ADDRESS === zeroAddress) {
+      setNotice({ tone: "bad", text: "Contract address is not configured." });
+      return;
+    }
+    await submitKarma(CONTRACT_ADDRESS);
+  }
+
   async function handleSend() {
     if (!isConnected) {
       setNotice({ tone: "soft", text: "Choose a wallet to connect." });
@@ -209,28 +246,7 @@ export function BaseKarmaApp() {
       setNotice({ tone: "bad", text: "You cannot send karma to yourself." });
       return;
     }
-    if (chainId !== BASE_CHAIN_ID) {
-      await switchChainAsync({ chainId: base.id });
-    }
-    const call = buildAttributedSendKarmaCall(recipient as Address, referrer);
-    try {
-      await sendCallsAsync({
-        calls: [call],
-        capabilities: {
-          dataSuffix: {
-            value: dataSuffix
-          }
-        },
-        chainId: base.id,
-        experimental_fallback: true
-      });
-    } catch {
-      await sendTransactionAsync({
-        to: CONTRACT_ADDRESS,
-        data: appendAttributionSuffix(call.data as Hex),
-        chainId: base.id
-      });
-    }
+    await submitKarma(recipient as Address);
   }
 
   async function copyInvite() {
@@ -339,6 +355,14 @@ export function BaseKarmaApp() {
           >
             {busy ? <Loader2 size={18} className="animate-spin" /> : <Heart size={18} />}
             {sendButtonLabel}
+          </button>
+          <button
+            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#77f0b2]/25 bg-[#77f0b2]/10 px-4 text-sm font-bold text-[#b9ffd6] transition hover:bg-[#77f0b2]/15 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={busy}
+            onClick={handleQuickLike}
+          >
+            {busy ? <Loader2 size={17} className="animate-spin" /> : <Sparkles size={17} />}
+            Quick Like
           </button>
           {visibleNotice ? (
             <p
