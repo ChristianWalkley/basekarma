@@ -7,11 +7,14 @@ type FlaggedProvider = EIP1193Provider & {
   isMetaMask?: true;
   isOkxWallet?: true;
   isOKExWallet?: true;
+  isOkxWalletExtension?: true;
   providers?: FlaggedProvider[];
 };
 
 type WalletWindow = Window & {
   ethereum?: FlaggedProvider;
+  okxwallet?: FlaggedProvider;
+  okxWallet?: FlaggedProvider;
 };
 
 const dataSuffix = (process.env.NEXT_PUBLIC_DATA_SUFFIX ||
@@ -21,8 +24,9 @@ function getInjectedProvider(match: (provider: FlaggedProvider) => boolean) {
   return (window?: unknown) => {
     const walletWindow = window as WalletWindow | undefined;
     const ethereum = walletWindow?.ethereum;
-    if (!ethereum) return undefined;
-    const providers = ethereum.providers?.length ? ethereum.providers : [ethereum];
+    const directProviders = [walletWindow?.okxwallet, walletWindow?.okxWallet].filter(Boolean) as FlaggedProvider[];
+    const ethereumProviders = ethereum?.providers?.length ? ethereum.providers : ethereum ? [ethereum] : [];
+    const providers = [...directProviders, ...ethereumProviders];
     return providers.find(match);
   };
 }
@@ -32,7 +36,9 @@ export const okxConnector = injected({
   target: {
     id: "okx",
     name: "OKX Wallet",
-    provider: getInjectedProvider((provider) => Boolean(provider.isOkxWallet || provider.isOKExWallet))
+    provider: getInjectedProvider((provider) =>
+      Boolean(provider.isOkxWallet || provider.isOKExWallet || provider.isOkxWalletExtension)
+    )
   }
 });
 
@@ -47,7 +53,9 @@ export const metaMaskConnector = injected({
 
 export const coinbaseConnector = coinbaseWallet({
   appName: "BaseKarma",
-  preference: "eoaOnly"
+  preference: {
+    options: "eoaOnly"
+  }
 });
 
 export const config = createConfig({

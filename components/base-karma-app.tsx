@@ -57,7 +57,7 @@ export function BaseKarmaApp() {
   const [notice, setNotice] = useState<{ tone: "good" | "bad" | "soft"; text: string } | null>(null);
   const queryClient = useQueryClient();
   const { address, isConnected, chainId } = useAccount();
-  const { connectors, connect, isPending: isConnecting } = useConnect();
+  const { connectors, connect, error: connectError, isPending: isConnecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const publicClient = usePublicClient({ chainId: base.id });
@@ -94,6 +94,8 @@ export function BaseKarmaApp() {
 
   const visibleNotice = writeError
     ? { tone: "bad" as const, text: errorText(writeError) }
+    : connectError
+      ? { tone: "bad" as const, text: errorText(connectError) }
     : isConfirmed
       ? { tone: "good" as const, text: "Karma sent." }
       : notice;
