@@ -14,7 +14,8 @@ type WalletWindow = Window & {
   ethereum?: FlaggedProvider;
 };
 
-const dataSuffix = (process.env.NEXT_PUBLIC_DATA_SUFFIX || "0x8021802180218021") as `0x${string}`;
+const dataSuffix = (process.env.NEXT_PUBLIC_DATA_SUFFIX ||
+  "0x62635f7764367765646a360b0080218021802180218021802180218021") as `0x${string}`;
 
 function getInjectedProvider(match: (provider: FlaggedProvider) => boolean) {
   return (window?: unknown) => {
