@@ -1,5 +1,6 @@
-import { coinbaseWallet, injected } from "@wagmi/connectors";
-import { createConfig, http } from "wagmi";
+import { Attribution } from "ox/erc8021";
+import { baseAccount, coinbaseWallet, injected } from "@wagmi/connectors";
+import { cookieStorage, createConfig, createStorage, http } from "wagmi";
 import { base } from "wagmi/chains";
 import type { EIP1193Provider } from "viem";
 
@@ -17,8 +18,8 @@ type WalletWindow = Window & {
   okxWallet?: FlaggedProvider;
 };
 
-const dataSuffix = (process.env.NEXT_PUBLIC_DATA_SUFFIX ||
-  "0x62635f7764367765646a360b0080218021802180218021802180218021") as `0x${string}`;
+export const builderCode = process.env.NEXT_PUBLIC_BUILDER_CODE || "bc_wd6wedj6";
+export const dataSuffix = Attribution.toDataSuffix({ codes: [builderCode] }) as `0x${string}`;
 
 function getInjectedProvider(match: (provider: FlaggedProvider) => boolean) {
   return (window?: unknown) => {
@@ -54,15 +55,25 @@ export const metaMaskConnector = injected({
 export const coinbaseConnector = coinbaseWallet({
   appName: "BaseKarma",
   preference: {
-    options: "eoaOnly"
+    options: "all"
+  }
+});
+
+export const baseAccountConnector = baseAccount({
+  appName: "BaseKarma",
+  preference: {
+    options: "all"
   }
 });
 
 export const config = createConfig({
   chains: [base],
-  connectors: [okxConnector, metaMaskConnector, coinbaseConnector],
+  connectors: [okxConnector, metaMaskConnector, coinbaseConnector, baseAccountConnector],
   multiInjectedProviderDiscovery: false,
   ssr: true,
+  storage: createStorage({
+    storage: cookieStorage
+  }),
   dataSuffix,
   transports: {
     [base.id]: http()

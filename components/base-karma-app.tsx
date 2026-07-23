@@ -20,13 +20,15 @@ import {
   useDisconnect,
   usePublicClient,
   useReadContract,
+  useSendCalls,
+  useSendTransaction,
   useSwitchChain,
   useWaitForTransactionReceipt,
   useWatchContractEvent,
-  useWriteContract
 } from "wagmi";
 import { base } from "wagmi/chains";
-import { formatUnits, isAddress, zeroAddress, type Address } from "viem";
+import { formatUnits, isAddress, zeroAddress, type Address, type Hex } from "viem";
+import { appendAttributionSuffix, buildAttributedSendKarmaCall, dataSuffix } from "@/lib/attribution";
 import { BASE_CHAIN_ID, CONTRACT_ADDRESS, baseKarmaAbi } from "@/lib/contract";
 
 type ActivityItem = {
@@ -61,7 +63,18 @@ export function BaseKarmaApp() {
   const { disconnect } = useDisconnect();
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const publicClient = usePublicClient({ chainId: base.id });
-  const { writeContract, data: txHash, isPending: isWriting, error: writeError } = useWriteContract();
+  const {
+    sendCallsAsync,
+    data: callsData,
+    error: callsError,
+    isPending: isSendingCalls
+  } = useSendCalls();
+  const {
+    sendTransactionAsync,
+    data: txHash,
+    error: sendTransactionError,
+    isPending: isSendingTransaction
+  } = useSendTransaction();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash
   });
@@ -92,12 +105,16 @@ export function BaseKarmaApp() {
     connector: connectors.find((connector) => connector.name === label)
   }));
 
-  const visibleNotice = writeError
-    ? { tone: "bad" as const, text: errorText(writeError) }
+  const visibleNotice = sendTransactionError
+    ? { tone: "bad" as const, text: errorText(sendTransactionError) }
+    : callsError
+      ? { tone: "bad" as const, text: errorText(callsError) }
     : connectError
       ? { tone: "bad" as const, text: errorText(connectError) }
     : isConfirmed
       ? { tone: "good" as const, text: "Karma sent." }
+      : callsData
+        ? { tone: "good" as const, text: "Karma submitted." }
       : notice;
 
   const activityQuery = useMemo(() => ["karmaActivity", address], [address]);
@@ -195,12 +212,25 @@ export function BaseKarmaApp() {
     if (chainId !== BASE_CHAIN_ID) {
       await switchChainAsync({ chainId: base.id });
     }
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: baseKarmaAbi,
-      functionName: "sendKarma",
-      args: [recipient as Address, referrer]
-    });
+    const call = buildAttributedSendKarmaCall(recipient as Address, referrer);
+    try {
+      await sendCallsAsync({
+        calls: [call],
+        capabilities: {
+          dataSuffix: {
+            value: dataSuffix
+          }
+        },
+        chainId: base.id,
+        experimental_fallback: true
+      });
+    } catch {
+      await sendTransactionAsync({
+        to: CONTRACT_ADDRESS,
+        data: appendAttributionSuffix(call.data as Hex),
+        chainId: base.id
+      });
+    }
   }
 
   async function copyInvite() {
@@ -213,7 +243,7 @@ export function BaseKarmaApp() {
     setNotice({ tone: "good", text: "Invite link copied." });
   }
 
-  const busy = isWriting || isConfirming || isSwitching;
+  const busy = isSendingCalls || isSendingTransaction || isConfirming || isSwitching;
   const hasRecipient = recipient.length > 0;
   const validRecipient = hasRecipient && isAddress(recipient);
   const isOwnRecipient = validRecipient && recipient.toLowerCase() === address?.toLowerCase();
