@@ -180,6 +180,10 @@ export function BaseKarmaApp() {
       setNotice({ tone: "bad", text: "Contract address is not configured." });
       return;
     }
+    if (!recipient) {
+      setNotice({ tone: "soft", text: "Enter a recipient wallet address." });
+      return;
+    }
     if (!isAddress(recipient)) {
       setNotice({ tone: "bad", text: "Enter a valid recipient address." });
       return;
@@ -213,7 +217,6 @@ export function BaseKarmaApp() {
   const hasRecipient = recipient.length > 0;
   const validRecipient = hasRecipient && isAddress(recipient);
   const isOwnRecipient = validRecipient && recipient.toLowerCase() === address?.toLowerCase();
-  const canSend = isConnected && validRecipient && !isOwnRecipient && !busy;
   const sendButtonLabel = !isConnected
     ? "Connect Wallet"
     : !hasRecipient
@@ -301,7 +304,7 @@ export function BaseKarmaApp() {
           />
           <button
             className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#77f0b2] px-4 text-sm font-black text-[#06100a] transition hover:bg-[#92f7c5] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isConnected ? !canSend : busy}
+            disabled={busy}
             onClick={handleSend}
           >
             {busy ? <Loader2 size={18} className="animate-spin" /> : <Heart size={18} />}
