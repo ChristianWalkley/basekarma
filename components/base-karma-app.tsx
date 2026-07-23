@@ -210,6 +210,21 @@ export function BaseKarmaApp() {
   }
 
   const busy = isWriting || isConfirming || isSwitching;
+  const hasRecipient = recipient.length > 0;
+  const validRecipient = hasRecipient && isAddress(recipient);
+  const isOwnRecipient = validRecipient && recipient.toLowerCase() === address?.toLowerCase();
+  const canSend = isConnected && validRecipient && !isOwnRecipient && !busy;
+  const sendButtonLabel = !isConnected
+    ? "Connect Wallet"
+    : !hasRecipient
+      ? "Enter Recipient"
+      : !validRecipient
+        ? "Invalid Address"
+        : isOwnRecipient
+          ? "Use Another Wallet"
+          : isConfirming
+            ? "Confirming..."
+            : "Send Karma";
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-24 pt-5 sm:px-6 lg:px-8">
@@ -286,11 +301,11 @@ export function BaseKarmaApp() {
           />
           <button
             className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#77f0b2] px-4 text-sm font-black text-[#06100a] transition hover:bg-[#92f7c5] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={busy}
+            disabled={isConnected ? !canSend : busy}
             onClick={handleSend}
           >
             {busy ? <Loader2 size={18} className="animate-spin" /> : <Heart size={18} />}
-            {isConnected ? (isConfirming ? "Confirming..." : "Send Karma") : "Connect Wallet"}
+            {sendButtonLabel}
           </button>
           {visibleNotice ? (
             <p
